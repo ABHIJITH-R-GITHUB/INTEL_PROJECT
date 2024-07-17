@@ -1,0 +1,217 @@
+import requests
+import re
+
+def ask_user_location():
+    location = input("Enter location address: ")
+    return location
+
+def convert_location_to_coordinates(api_key, location):
+    base_url = "https://api.tomtom.com"
+    version_number = "2"
+    ext = "json"
+
+    endpoint = f"{base_url}/search/{version_number}/geocode/{location}.{ext}"
+    params = {
+        'key': api_key,
+        'limit': 1
+    }
+
+    try:
+        response = requests.get(endpoint, params=params)
+        response.raise_for_status()
+
+        data = response.json()
+
+        if 'results' in data and data['results']:
+            lat = data['results'][0]['position']['lat']
+            lon = data['results'][0]['position']['lon']
+            return lat, lon
+        else:
+            print(f"Coordinates not found for location: {location}")
+            return None, None
+
+    except requests.exceptions.RequestException as e:
+        print(f"Request Error: {e}")
+        return None, None
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        print(f"Response Content: {response.text}")
+        return None, None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None, None
+
+def find_nearest_places(latitude, longitude, place_type, radius=5000):
+    place_types = {
+        "hospital": "hospital",
+        "educational institution": "school"
+    }
+    
+    overpass_url = "http://overpass-api.de/api/interpreter"
+    overpass_query = f"""
+        [out:json];
+        node["amenity"="{place_types[place_type]}"](around:{radius},{latitude},{longitude});
+        out body;
+        """
+    try:
+        response = requests.get(overpass_url, params={'data': overpass_query})
+        response.raise_for_status()
+
+        data = response.json()
+        places = []
+
+        for element in data['elements']:
+            place = {
+                'name': element['tags'].get('name', 'N/A'),
+                'address': element['tags'].get('addr:full', 'N/A'),
+                'latitude': element['lat'],
+                'longitude': element['lon']
+            }
+            places.append(place)
+
+        return places
+
+    except requests.exceptions.RequestException as e:
+        print(f"Request Error: {e}")
+        return None
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        print(f"Response Content: {response.text}")
+        return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+def convert_coords_to_address(api_key, latitude, longitude):
+    base_url = "https://api.tomtom.com"
+    version_number = "2"
+    position = f"{latitude},{longitude}"
+    ext = "json"
+
+    endpoint = f"{base_url}/search/{version_number}/reverseGeocode/{position}.{ext}"
+    params = {
+        'key': api_key,
+        'language': 'en-US',
+        'radius': 1000,
+        'returnSpeedLimit': True
+    }
+
+    try:
+        response = requests.get(endpoint, params=params)
+        response.raise_for_status()
+
+        data = response.json()
+
+        if 'addresses' in data and data['addresses']:
+            address = data['addresses'][0]['address']['freeformAddress']
+            return address
+        else:
+            return 'Address not found'
+
+    except requests.exceptions.RequestException as e:
+        print(f"Request Error: {e}")
+        return None
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        print(f"Response Content: {response.text}")
+        return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+def rating_scrapper(place_name):
+    API_KEY = '<YOUR_GOOGLE_API_KEY>'
+    CSE_ID = '<YOUR_GOOGLE_CSE_ID>'
+    QUERY = f"{place_name} justdial ratings"
+    url = f"https://www.googleapis.com/customsearch/v1?q={QUERY}&key={API_KEY}&cx={CSE_ID}"
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        data = response.json()
+        search_results = data.get('items', [])
+
+        rating_pattern = r"Rated\s+(\d+(\.\d+)?)"
+        number_pattern = r"(\d+)\s+Customer Reviews"
+
+        for result in search_results[:3]:
+            if 'snippet' in result:
+                snippet = result['snippet']
+
+                rating_match = re.search(rating_pattern, snippet)
+                number_match = re.search(number_pattern, snippet)
+
+                if rating_match and number_match:
+                    rating = float(rating_match.group(1))
+                    number_of_reviews = int(number_match.group(1))
+                    return rating, number_of_reviews
+
+        print(f"No valid ratings found for {place_name} in the first 3 search results.")
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching rating search results: {e}")
+
+    except KeyError as e:
+        print(f"KeyError: {e}. Response: {response.text}")
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+    return None, None
+
+def main():
+    api_key = '<YOUR_TOMTOM_API_KEY>'
+
+    print("1. Find Nearest Hospitals")
+    print("2. Find Nearest Educational Institutions")
+    choice = input("Enter your choice (1 or 2): ")
+
+    place_type = "hospital" if choice == '1' else "educational institution"
+
+    user_location = ask_user_location()
+
+    if user_location:
+        latitude, longitude = convert_location_to_coordinates(api_key, user_location)
+
+        if latitude is not None and longitude is not None:
+            print(f"Coordinates for {user_location}: Latitude {latitude}, Longitude {longitude}")
+            print(f"Fetching nearest {place_type}s...")
+
+            places = find_nearest_places(latitude, longitude, place_type)
+            if places:
+                for place in places:
+                    place_name = place['name']
+                    rating, number_of_reviews = rating_scrapper(place_name)
+
+                    print(f"{place_type.capitalize()} Name: {place_name}")
+                    print(f"Address: {place['address']}")
+                    print(f"Latitude: {place['latitude']}")
+                    print(f"Longitude: {place['longitude']}")
+
+                    if rating is not None and number_of_reviews is not None:
+                        print(f"Rating: {rating}")
+                        print(f"Number of Reviews: {number_of_reviews}")
+                    else:
+                        print("No rating information found.")
+                    print("--------------------")
+
+                    address = convert_coords_to_address(api_key, place['latitude'], place['longitude'])
+
+                    if address:
+                        print(f"Coordinate ({place['latitude']}, {place['longitude']}) is located at:")
+                        print(address)
+                    else:
+                        print(f"Failed to retrieve address for coordinate ({place['latitude']}, {place['longitude']}).")
+                    print("--------------------")
+
+            else:
+                print(f"No {place_type} details found from Overpass API.")
+        else:
+            print(f"Failed to fetch coordinates for location: {user_location}")
+
+    else:
+        print("No user location provided.")
+
+if __name__ == "__main__":
+    main()
