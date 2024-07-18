@@ -1,0 +1,6 @@
+CSE ID
+TOM TOM API KEY
+CUSTOM SEARCH JSON API
+python
+pip install flask
+python app.py
