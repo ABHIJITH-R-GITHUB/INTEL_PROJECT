@@ -135,8 +135,8 @@ def convert_coords_to_address(api_key, latitude, longitude):
         return 'Address not found'
 
 def rating_scrapper(place_name):
-    API_KEY = 'AIzaSyB_J_oTVssoN0vbzkIW8RbQoOCl-xDKJp0'
-    CSE_ID = '542b18787921b455f'
+    API_KEY = ''  # Removed API key
+    CSE_ID = ''  # Removed Custom Search Engine ID
     QUERY = f"{place_name} justdial ratings"
     url = f"https://www.googleapis.com/customsearch/v1?q={QUERY}&key={API_KEY}&cx={CSE_ID}"
 
@@ -178,7 +178,7 @@ def rating_scrapper(place_name):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        api_key = 'Qfq2rYOcaRaawCNYeuIjEaNaJMsz4FLJ'
+        api_key = ''  # Removed API key
 
         choice = request.form.get('choice')
         place_type = "hospital" if choice == '1' else "educational institution"
