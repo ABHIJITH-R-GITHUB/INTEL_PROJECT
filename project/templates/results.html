@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="header-container">
+        <h1 class="heading">{{ place_type | upper }} NEAR {{ location | upper }}</h1>
+    </div>
+    <div class="results-container">
+        <ul>
+            {% for result in results %}
+            <li>
+                <strong>{{ result.number }}. {{ result.name }}</strong><br>
+                Address: {{ result.address }}<br>
+                Latitude: {{ result.latitude }}<br>
+                Longitude: {{ result.longitude }}<br>
+                {% if result.rating %}
+                Rating: {{ result.rating }} ({{ result.reviews }} reviews)<br>
+                {% else %}
+                Rating information not found.<br>
+                {% endif %}
+                <hr> <!-- Dotted line -->
+            </li>
+            {% endfor %}
+        </ul>
+        <a href="/" class="search-again-button">Search Again</a>
+    </div>
+</body>
+</html>
